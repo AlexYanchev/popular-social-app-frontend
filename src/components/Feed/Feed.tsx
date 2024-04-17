@@ -4,6 +4,9 @@ import styled from 'styled-components';
 import Stories from '../Stories/Stories';
 import Messenger from '../Messenger/Messenger';
 import Post from '../Post/Post';
+import { useEffect, useState } from 'react';
+import axios from '../axios.js';
+import Pusher from 'pusher-js';
 
 const FeedWrapper = styled.div`
   flex: 1;
@@ -14,24 +17,41 @@ const FeedWrapper = styled.div`
 `;
 
 const Feed = () => {
+  const [postsData, setPostsData] = useState([]);
+  const syncFeed = () => {
+    axios.get('/posts').then((res) => {
+      console.log(res.data);
+      setPostsData(res.data);
+    });
+  };
+  useEffect(() => {
+    syncFeed();
+  }, []);
+
+  useEffect(() => {
+    const pusher = new Pusher(process.env.REACT_APP_PUSHER_ID || '', {
+      cluster: 'eu',
+    });
+    const channel = pusher.subscribe('socialPosts');
+    channel.bind('inserted', (data: any) => {
+      syncFeed();
+    });
+  }, []);
+
   return (
     <FeedWrapper>
       <Stories />
       <Messenger />
-      <Post
-        profilePic='https://pbs.twimg.com/profile_images/1020939891457241088/fcbu814K_400x400.jpg'
-        message='Awesome post on CSS Animation. Loved it'
-        timestamp='1609512232424'
-        imgName='https://res.cloudinary.com/dxkxvfo2o/image/upload/v1598295332/CSS_Animation_xrvhai.png'
-        username='Nabendu'
-      />{' '}
-      <Post
-        profilePic='https://pbs.twimg.com/profile_images/1020939891457241088/fcbu814K_400x400.jpg'
-        message='BookList app in Vanilla JavaScript'
-        timestamp='1509512232424'
-        imgName='https://res.cloudinary.com/dxkxvfo2o/image/upload/v1609138312/Booklist-es6_sawxbc.png'
-        username='TWD'
-      />
+      {postsData.map((entry: any, index) => (
+        <Post
+          key={index}
+          profilePic={entry.avatar}
+          message={entry.text}
+          timestamp={entry.timestamp}
+          imgName={entry.imgName}
+          username={entry.user}
+        />
+      ))}
     </FeedWrapper>
   );
 };
